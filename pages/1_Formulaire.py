@@ -25,7 +25,7 @@ if st.button("📊 Lancer la prédiction"):
     try:
         payload = {"data": user_input}
         # Remplace l'URL ci-dessous par l'URL exacte de ton API Render
-        response = requests.post("https://TON-API.onrender.com/predict", json=payload)
+        response = requests.post("https://credit-scoring-project-ytl6.onrender.com", json=payload)
 
         if response.status_code == 200:
             result = response.json()
