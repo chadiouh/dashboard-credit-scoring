@@ -43,7 +43,7 @@ for feature in top_features:
 if st.button("📊 Lancer la prédiction"):
     try:
         payload = {"data": user_input}
-        response = requests.post("https://ton-api.onrender.com/predict", json=payload)
+        response = requests.post("https://credit-scoring-project-ytl6.onrender.com", json=payload)
 
         if response.status_code == 200:
             result = response.json()
