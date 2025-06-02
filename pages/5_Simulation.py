@@ -57,7 +57,7 @@ if st.button("🔁 Recalculer la prédiction"):
 
     payload = {"data": simu_input}
     try:
-        response = requests.post("https://ton-api.onrender.com/predict", json=payload)
+        response = requests.post("https://credit-scoring-project-ytl6.onrender.com", json=payload)
         if response.status_code == 200:
             result = response.json()
             proba = result["proba"]
