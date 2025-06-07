@@ -21,19 +21,23 @@ user_input = {}
 for feature in top_features:
     if feature == "CNT_CHILDREN":
         val = st.number_input("Nombre d'enfants", min_value=0, step=1, value=0)
-        user_input[feature] = int(val)  # ✅ cast explicite
+        user_input[feature] = int(val)
     else:
         val = st.number_input(f"{feature}", value=0.0, step=0.01, format="%.2f")
-        user_input[feature] = float(val)  # ✅ cast explicite
+        user_input[feature] = float(val)
+
+# === Choix de l'URL selon l'environnement
+IS_RENDER = os.getenv("RENDER", False)
+if IS_RENDER:
+    API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"
+else:
+    API_URL = "http://127.0.0.1:8000/predict"
 
 # === Appel API ===
 if st.button("📊 Lancer la prédiction"):
     try:
         ordered_values = [user_input[feature] for feature in top_features]
         payload = {"values": ordered_values}
-        
-        #API_URL = "http://127.0.0.1:8000/predict"  # local
-        API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"  # cloud
 
         response = requests.post(API_URL, json=payload)
 
@@ -42,12 +46,8 @@ if st.button("📊 Lancer la prédiction"):
             st.success("✅ Prédiction obtenue avec succès.")
             st.session_state["result"] = result
             st.session_state["user_input"] = user_input
-            st.switch_page("pages/2_Scoring.py")
+            st.switch_page("2_Scoring")
         else:
             st.error("Erreur dans l'API : " + response.text)
     except requests.exceptions.RequestException as e:
         st.error(f"❌ Erreur de connexion à l’API : {e}")
-
-
-
-
