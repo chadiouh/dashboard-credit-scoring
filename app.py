@@ -11,7 +11,7 @@ SEUIL = 0.5  # Seuil de décision métier
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # === CHARGEMENT DES VARIABLES ===
-with open(os.path.join(BASE_DIR, "top_features.json"), "r") as f:
+with open(os.path.join(BASE_DIR, "models", "top_features.json"), "r") as f:
     top_features = json.load(f)
 
 # === TITRE DE L'INTERFACE ===
@@ -44,6 +44,7 @@ if st.button("Lancer la prédiction"):
 
     except Exception as e:
         st.error(f"Erreur lors de la requête : {e}")
+
 
 
 
