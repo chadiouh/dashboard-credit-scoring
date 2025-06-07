@@ -57,7 +57,7 @@ if st.button("🔁 Recalculer la prédiction"):
 
     payload = {"data": simu_input}
     try:
-        API_URL = "https://credit-scoring-project-ytl6.onrender.com/predict"
+        API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"
         response = requests.post(API_URL, json=payload)
 
         if response.status_code == 200:
