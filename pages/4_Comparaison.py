@@ -2,6 +2,7 @@
 import pandas as pd
 import plotly.express as px
 import json
+import os
 
 st.set_page_config(page_title="Comparaison client", layout="centered")
 
@@ -13,13 +14,17 @@ if "user_input" not in st.session_state:
 user_input = st.session_state["user_input"]
 
 # === Chargement des top features ===
-with open("models/top_features.json", "r") as f:
+file_dir = os.path.dirname(__file__)
+features_path = os.path.abspath(os.path.join(file_dir, "..", "models", "top_features.json"))
+data_path = os.path.abspath(os.path.join(file_dir, "..", "data", "application_train.csv"))
+
+with open(features_path, "r") as f:
     top_features = json.load(f)
 
 # === Chargement des données de référence ===
 @st.cache_data
 def load_reference_data():
-    df = pd.read_csv("data/application_train.csv", usecols=top_features)
+    df = pd.read_csv(data_path, usecols=top_features)
     df_sample = df.sample(n=10000, random_state=42)  # perf
     return df_sample
 
@@ -48,4 +53,5 @@ fig.add_vline(
 
 st.plotly_chart(fig, use_container_width=True)
 st.info(f"Valeur du client pour **{feature}** : `{user_input.get(feature)}`")
+
 

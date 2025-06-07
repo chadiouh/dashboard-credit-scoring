@@ -1,11 +1,15 @@
 ﻿import streamlit as st
 import json
 import requests
+import os
 
 st.set_page_config(page_title="Simulation", layout="centered")
 
 # === Chargement des top features ===
-with open("models/top_features.json", "r") as f:
+file_dir = os.path.dirname(__file__)
+features_path = os.path.abspath(os.path.join(file_dir, "..", "models", "top_features.json"))
+
+with open(features_path, "r") as f:
     top_features = json.load(f)
 
 # === Vérification des données ===
@@ -54,9 +58,9 @@ for feature in top_features:
 
 # === Bouton de recalcul ===
 if st.button("🔁 Recalculer la prédiction"):
-    payload = {"values": [simu_input]}  # ✅ Corrected payload format
+    payload = {"values": [simu_input]}
     try:
-        API_URL = "http://127.0.0.1:8000/predict"
+        API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"
         response = requests.post(API_URL, json=payload)
 
         if response.status_code == 200:
@@ -77,4 +81,5 @@ if st.button("🔁 Recalculer la prédiction"):
 
     except requests.exceptions.RequestException:
         st.error("❌ Erreur de connexion à l’API.")
+
 

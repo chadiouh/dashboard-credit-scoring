@@ -32,8 +32,8 @@ if st.button("📊 Lancer la prédiction"):
         ordered_values = [user_input[feature] for feature in top_features]
         payload = {"values": ordered_values}
         
-        API_URL = "http://127.0.0.1:8000/predict"  # local
-        # API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"  # cloud
+        #API_URL = "http://127.0.0.1:8000/predict"  # local
+        API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"  # cloud
 
         response = requests.post(API_URL, json=payload)
 
