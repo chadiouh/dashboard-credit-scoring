@@ -54,10 +54,9 @@ for feature in top_features:
 
 # === Bouton de recalcul ===
 if st.button("🔁 Recalculer la prédiction"):
-
-    payload = {"data": simu_input}
+    payload = {"values": [simu_input]}  # ✅ Corrected payload format
     try:
-        API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"
+        API_URL = "http://127.0.0.1:8000/predict"
         response = requests.post(API_URL, json=payload)
 
         if response.status_code == 200:
@@ -78,3 +77,4 @@ if st.button("🔁 Recalculer la prédiction"):
 
     except requests.exceptions.RequestException:
         st.error("❌ Erreur de connexion à l’API.")
+
