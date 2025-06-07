@@ -1,6 +1,8 @@
-streamlit==1.31.1
+streamlit
+requests
 pandas
 numpy
-requests
+scikit-learn
+lightgbm
 plotly
 shap
