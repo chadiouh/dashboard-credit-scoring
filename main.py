@@ -1,69 +1,66 @@
-﻿from fastapi import FastAPI
-from pydantic import BaseModel
-import joblib
-import pandas as pd
-import numpy as np
+﻿import os
+import pickle
 import json
-import os
-import shap  # <--- ajouté
+import numpy as np
+import pandas as pd
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
 
-# === Initialisation FastAPI ===
-app = FastAPI(title="Credit Scoring API", description="API de prédiction LightGBM optimisé", version="1.0")
-
-# === Détection du chemin absolu du fichier (fonctionne localement et sur Render) ===
+# Chemin absolu vers le répertoire courant
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# === Chargement des artefacts (modèle, imputer, baseline, features importantes) ===
-model = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
-imputer = joblib.load(os.path.join(BASE_DIR, "preprocessor.pkl"))
+# Chargement des fichiers
+with open(os.path.join(BASE_DIR, "top_features.json"), "r") as f:
+    top_features = json.load(f)
 
 with open(os.path.join(BASE_DIR, "baseline_row.json"), "r") as f:
     baseline_row = json.load(f)
 
-with open(os.path.join(BASE_DIR, "top_features.json"), "r") as f:
-    top_features = json.load(f)
+with open(os.path.join(BASE_DIR, "preprocessor.pkl"), "rb") as f:
+    preprocessor = pickle.load(f)
 
-# === Définition du seuil optimal (ajusté selon la validation métier) ===
-BEST_THRESHOLD = 0.42
+with open(os.path.join(BASE_DIR, "model_final.pkl"), "rb") as f:
+    model = pickle.load(f)
 
-# === Initialisation du SHAP explainer ===
-explainer = shap.TreeExplainer(model)
+# Initialisation de l'API
+app = FastAPI()
 
-# === Classe d'entrée attendue par l'API ===
+# Modèle de données (uniquement les 15 variables importantes)
 class InputData(BaseModel):
-    data: dict
+    values: List[float]
 
-# === Route d’accueil ===
 @app.get("/")
 def read_root():
-    return {"message": "Bienvenue sur l'API Credit Scoring"}
+    return {"message": "API de scoring opérationnelle."}
 
-# === Route de prédiction ===
 @app.post("/predict")
-def predict(input: InputData):
-    input_data = input.data
+def predict(input_data: InputData):
+    try:
+        if len(input_data.values) != len(top_features):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Attendu {len(top_features)} valeurs, reçu {len(input_data.values)}"
+            )
 
-    # Complétion automatique avec la ligne baseline
-    complete_row = baseline_row.copy()
-    complete_row.update(input_data)
+        # Copie de la ligne baseline et insertion des 15 valeurs
+        full_input = baseline_row.copy()
+        for i, feature in enumerate(top_features):
+            full_input[feature] = input_data.values[i]
 
-    # Conversion en DataFrame
-    X = pd.DataFrame([complete_row])
+        # Transformation en DataFrame
+        X = pd.DataFrame([full_input])
 
-    # Imputation
-    X_imputed = imputer.transform(X)
+        # Application du préprocesseur
+        X_processed = preprocessor.transform(X)
 
-    # Prédiction
-    y_proba = model.predict_proba(X_imputed)[:, 1][0]
-    y_pred = int(y_proba >= BEST_THRESHOLD)
+        # Prédiction
+        proba = model.predict_proba(X_processed)[0, 1]
+        return {"prediction": float(proba)}
 
-    # Calcul des valeurs SHAP locales
-    shap_values = explainer.shap_values(X_imputed)[1]  # [1] = classe 1 = non solvable
-    shap_dict = dict(zip(top_features, shap_values[0].tolist()))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {
-        "proba": round(y_proba, 4),
-        "prediction": y_pred,
-        "threshold": BEST_THRESHOLD,
-        "shap_values": shap_dict
-    }
+
+
+
