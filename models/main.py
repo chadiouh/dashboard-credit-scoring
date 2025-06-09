@@ -6,15 +6,15 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
+import shap
 
-# === Chemin vers les fichiers ===
+# Chemins
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# === Chargement des fichiers ===
-with open(os.path.join(BASE_DIR, "top_features.json"), "r") as f:
+with open(os.path.join(BASE_DIR, "top_features.json")) as f:
     top_features = json.load(f)
 
-with open(os.path.join(BASE_DIR, "baseline_row.json"), "r") as f:
+with open(os.path.join(BASE_DIR, "baseline_row.json")) as f:
     baseline_row = json.load(f)
 
 with open(os.path.join(BASE_DIR, "preprocessor.pkl"), "rb") as f:
@@ -23,45 +23,51 @@ with open(os.path.join(BASE_DIR, "preprocessor.pkl"), "rb") as f:
 with open(os.path.join(BASE_DIR, "model_final.pkl"), "rb") as f:
     model = pickle.load(f)
 
-# === Initialisation de l'API ===
 app = FastAPI()
 
-# === Modèle d'entrée ===
 class InputData(BaseModel):
     values: List[float]
 
 @app.get("/")
-def read_root():
-    return {"message": "API de scoring opérationnelle."}
+def root():
+    return {"message": "API active"}
 
 @app.post("/predict")
 def predict(input_data: InputData):
     try:
         if len(input_data.values) != len(top_features):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Attendu {len(top_features)} valeurs, reçu {len(input_data.values)}"
-            )
+            raise HTTPException(status_code=400, detail="Mauvais nombre de variables")
 
-        # Insertion des valeurs dans la baseline
-        full_input = baseline_row.copy()
-        for i, feature in enumerate(top_features):
-            full_input[feature] = input_data.values[i]
-
-        # DataFrame + préprocessing
-        X = pd.DataFrame([full_input])
+        # Création du dataframe
+        row = baseline_row.copy()
+        for i, feat in enumerate(top_features):
+            row[feat] = input_data.values[i]
+        X = pd.DataFrame([row])
         X_processed = preprocessor.transform(X)
 
         # Prédiction
         proba = model.predict_proba(X_processed)[0, 1]
-        threshold = 0.5
-        prediction = int(proba > threshold)
+        prediction = int(proba >= 0.5)
+
+        # Explication SHAP (TreeExplainer)
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_processed)
+
+        if isinstance(shap_values, list) and len(shap_values) == 2:
+            shap_vals = shap_values[1][0].tolist()
+            expected_val = float(explainer.expected_value[1])
+        else:
+            shap_vals = shap_values[0].tolist()
+            expected_val = float(explainer.expected_value)
 
         return {
             "prediction": prediction,
-            "proba": float(proba),
-            "threshold": threshold
+            "proba": proba,
+            "threshold": 0.5,
+            "shap_values": shap_vals,
+            "expected_value": expected_val
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+

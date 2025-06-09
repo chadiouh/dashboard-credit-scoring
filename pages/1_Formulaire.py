@@ -43,10 +43,21 @@ if st.button("📊 Lancer la prédiction"):
 
         if response.status_code == 200:
             result = response.json()
-            st.success("✅ Prédiction obtenue avec succès.")
+            proba_percent = round(result.get("proba", 0.0) * 100, 2)
+            prediction = result.get("prediction")
+            threshold = result.get("threshold")
+
+            st.success(f"✅ Probabilité de défaut : {proba_percent} %")
+
+            with st.expander("📌 Détails de la prédiction"):
+                st.write(f"**Score brut (proba)** : {proba_percent} %")
+                st.write(f"**Seuil de décision** : {threshold}")
+                st.write(f"**Décision finale** : {'❌ Défaut' if prediction == 1 else '✅ Approuvé'}")
+
+            # Stockage pour navigation inter-pages
             st.session_state["result"] = result
             st.session_state["user_input"] = user_input
-            st.switch_page("Scoring")
+
         else:
             st.error("Erreur dans l'API : " + response.text)
     except requests.exceptions.RequestException as e:
