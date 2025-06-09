@@ -46,7 +46,7 @@ if st.button("📊 Lancer la prédiction"):
             st.success("✅ Prédiction obtenue avec succès.")
             st.session_state["result"] = result
             st.session_state["user_input"] = user_input
-            st.switch_page("Scoring")
+            st.switch_page("pages/2_Scoring.py")
         else:
             st.error("Erreur dans l'API : " + response.text)
     except requests.exceptions.RequestException as e:
