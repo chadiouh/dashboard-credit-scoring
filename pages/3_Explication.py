@@ -66,3 +66,4 @@ with st.expander("📋 Détails des contributions (limité à 20 variables)"):
 # === Message d'explication simplifié ===
 st.markdown("---")
 st.info("Un impact SHAP **positif** pousse vers une prédiction **non solvable**, un impact **négatif** vers **solvable**. Plus la barre est grande, plus l’influence est forte.")
+
