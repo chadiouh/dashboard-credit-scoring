@@ -19,6 +19,11 @@ if "shap_values" not in result:
 
 # Récupération des SHAP values formatées comme un dictionnaire
 shap_dict = result["shap_values"]
+
+# Filtrage pour ne garder que les clés présentes dans user_input
+shap_dict = {k: v for k, v in shap_dict.items() if k in user_input}
+
+# Extraction des données
 top_features = list(shap_dict.keys())
 shap_values = list(shap_dict.values())
 
