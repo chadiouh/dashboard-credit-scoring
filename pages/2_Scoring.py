@@ -20,6 +20,10 @@ prediction = result["prediction"]
 shap_values = result["shap_values"]
 expected_value = result["expected_value"]
 
+# === Top features & input values ===
+top_features = list(user_input.keys())
+input_values = list(user_input.values())
+
 # === Titre & décision ===
 st.title("📈 Résultat de la prédiction")
 st.subheader("Analyse de la solvabilité du client")
@@ -61,10 +65,10 @@ st.info("Le score représente la probabilité que le client **ne rembourse pas**
 st.subheader("🧠 Contribution des variables à cette décision (SHAP)")
 
 df_shap = pd.DataFrame({
-    "feature": top_features,
-    "shap_value": shap_values,
-    "value": input_values,
-    }).sort_values(by="Contribution SHAP", key=abs, ascending=False)
+    "Feature": top_features,
+    "Contribution SHAP": shap_values,
+    "Valeur client": input_values,
+}).sort_values(by="Contribution SHAP", key=abs, ascending=False)
 
 st.dataframe(df_shap.style.format({"Valeur client": "{:.2f}", "Contribution SHAP": "{:.3f}"}))
 
