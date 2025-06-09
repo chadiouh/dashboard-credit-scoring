@@ -1,6 +1,8 @@
 ﻿import streamlit as st
 import pandas as pd
 import plotly.express as px
+import json
+import os
 
 st.set_page_config(page_title="Explication du score", layout="centered")
 
@@ -12,42 +14,38 @@ if "result" not in st.session_state or "user_input" not in st.session_state:
 result = st.session_state["result"]
 user_input = st.session_state["user_input"]
 
-# Vérifie que les SHAP sont bien présents dans le JSON
+# === Vérification des SHAP values ===
 if "shap_values" not in result:
-    st.error("🚫 Les valeurs SHAP n'ont pas été renvoyées par l'API. Veuillez les ajouter.")
+    st.error("🚫 Les valeurs SHAP ne sont pas présentes.")
     st.stop()
 
-# Récupération des SHAP values formatées comme un dictionnaire
-shap_dict = result["shap_values"]
+shap_values = result["shap_values"]
 
-# Filtrage pour ne garder que les clés présentes dans user_input
-shap_dict = {k: v for k, v in shap_dict.items() if k in user_input}
+# === Chargement des top features ===
+file_dir = os.path.dirname(__file__)
+features_path = os.path.abspath(os.path.join(file_dir, "..", "models", "top_features.json"))
+with open(features_path, "r") as f:
+    top_features = json.load(f)
 
-# Extraction des données
-top_features = list(shap_dict.keys())
-shap_values = list(shap_dict.values())
-
-# Vérification cohérence
+# === Vérification cohérence
 if len(shap_values) != len(top_features):
-    st.error("🚫 Erreur : le nombre de SHAP values ne correspond pas aux top features.")
+    st.error("🚫 Longueur incohérente entre shap_values et top_features.")
     st.stop()
 
-# === Limitation du nombre de variables à 20 max pour affichage
-max_features_display = 20
+# === Construction du dataframe SHAP
 shap_df = pd.DataFrame({
     "Variable": top_features,
     "Valeur saisie": [user_input.get(k, "—") for k in top_features],
     "Impact SHAP": shap_values
 }).sort_values("Impact SHAP", key=abs, ascending=False)
 
-# Filtrage pour l'affichage
-df_display = shap_df.head(max_features_display)
+# === Limitation de l'affichage à 20 variables
+df_display = shap_df.head(20)
 
-# === Titre ===
+# === Affichage
 st.title("🔍 Explication de la prédiction")
 st.write("Voici l’impact des principales variables sur la décision prise pour ce client.")
 
-# === Affichage du graphique interactif ===
 fig = px.bar(
     df_display,
     x="Impact SHAP",
@@ -59,11 +57,8 @@ fig = px.bar(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-# === Tableau explicatif ===
 with st.expander("📋 Détails des contributions (limité à 20 variables)"):
     st.dataframe(df_display.style.format({"Impact SHAP": "{:.4f}"}), use_container_width=True)
 
-# === Message d'explication simplifié ===
 st.markdown("---")
 st.info("Un impact SHAP **positif** pousse vers une prédiction **non solvable**, un impact **négatif** vers **solvable**. Plus la barre est grande, plus l’influence est forte.")
-
