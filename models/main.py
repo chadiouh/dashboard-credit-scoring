@@ -54,10 +54,12 @@ def predict(input_data: InputData):
         shap_values = explainer.shap_values(X_processed)
 
         if isinstance(shap_values, list) and len(shap_values) == 2:
-            shap_vals = shap_values[1][0].tolist()
+            raw_values = shap_values[1][0]
+            shap_vals = raw_values[:len(top_features)].tolist()
             expected_val = float(explainer.expected_value[1])
         else:
-            shap_vals = shap_values[0].tolist()
+            raw_values = shap_values[0]
+            shap_vals = raw_values[:len(top_features)].tolist()
             expected_val = float(explainer.expected_value)
 
         return {
@@ -70,4 +72,3 @@ def predict(input_data: InputData):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

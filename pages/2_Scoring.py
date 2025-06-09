@@ -61,10 +61,10 @@ st.info("Le score représente la probabilité que le client **ne rembourse pas**
 st.subheader("🧠 Contribution des variables à cette décision (SHAP)")
 
 df_shap = pd.DataFrame({
-    "Feature": list(user_input.keys()),
-    "Valeur client": list(user_input.values()),
-    "Contribution SHAP": shap_values
-}).sort_values(by="Contribution SHAP", key=abs, ascending=False)
+    "feature": top_features,
+    "shap_value": shap_values,
+    "value": input_values,
+    }).sort_values(by="Contribution SHAP", key=abs, ascending=False)
 
 st.dataframe(df_shap.style.format({"Valeur client": "{:.2f}", "Contribution SHAP": "{:.3f}"}))
 
