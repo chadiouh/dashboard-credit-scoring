@@ -17,9 +17,10 @@ if "shap_values" not in result:
     st.error("🚫 Les valeurs SHAP n'ont pas été renvoyées par l'API. Veuillez les ajouter.")
     st.stop()
 
-# shap_values est une liste de valeurs et top_features doit être dans les résultats
-shap_values = list(result["shap_values"])
-top_features = result.get("top_features", [])
+# Récupération des SHAP values formatées comme un dictionnaire
+shap_dict = result["shap_values"]
+top_features = list(shap_dict.keys())
+shap_values = list(shap_dict.values())
 
 # Vérification cohérence
 if len(shap_values) != len(top_features):
@@ -60,4 +61,3 @@ with st.expander("📋 Détails des contributions (limité à 20 variables)"):
 # === Message d'explication simplifié ===
 st.markdown("---")
 st.info("Un impact SHAP **positif** pousse vers une prédiction **non solvable**, un impact **négatif** vers **solvable**. Plus la barre est grande, plus l’influence est forte.")
-
