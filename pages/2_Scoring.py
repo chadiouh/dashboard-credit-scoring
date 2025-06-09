@@ -8,7 +8,7 @@ if "result" not in st.session_state or "user_input" not in st.session_state:
     st.warning("⚠️ Veuillez d'abord remplir le formulaire dans l'étape précédente.")
     st.stop()
 
-result = st.session_state["result"]
+result = st.session_state["result"]["proba"]
 user_input = st.session_state["user_input"]
 
 # === Affichage du titre ===
