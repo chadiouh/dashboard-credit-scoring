@@ -1,58 +1,65 @@
 ﻿import streamlit as st
 import pandas as pd
 import requests
-import plotly.graph_objects as go
+import json
+import os
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Simulation", layout="wide")
 
-st.markdown("# Page de simulation")
-st.write("Ajustez les valeurs pour simuler une prédiction.")
+st.title("🧪 Simulation de demande de crédit")
+st.write("Modifiez les variables pour simuler un nouveau client et voir l'impact sur la prédiction.")
 
-# Charger les données originales
-df = pd.read_csv("data/application_sample.csv")
+# === Chargement des top features ===
+file_dir = os.path.dirname(__file__)
+features_path = os.path.abspath(os.path.join(file_dir, "..", "models", "top_features.json"))
+data_path = os.path.abspath(os.path.join(file_dir, "..", "data", "application_sample.csv"))
 
-# Sélectionner un échantillon
-sample = df.sample(1, random_state=42)
-sample_dict = sample.to_dict(orient="records")[0]
+with open(features_path, "r") as f:
+    top_features = json.load(f)
 
-st.markdown("### Modifier les valeurs pour simulation :")
+# === Chargement d'un client aléatoire comme base
+@st.cache_data
+def load_sample_row():
+    df = pd.read_csv(data_path)
+    df = df[top_features]
+    sample = df.sample(1, random_state=42).to_dict(orient="records")[0]
+    return sample
 
-# Création du formulaire dynamique
+sample_input = load_sample_row()
+
+# === Interface utilisateur pour modifier les 15 variables
 user_input = {}
-for key, value in sample_dict.items():
-    if isinstance(value, (int, float)):
-        user_input[key] = st.number_input(f"{key}", value=value)
+st.markdown("### 🎛️ Modifiez les variables du client :")
+for feature in top_features:
+    val = sample_input.get(feature, 0.0)
+    if isinstance(val, float):
+        user_input[feature] = st.number_input(f"{feature}", value=val, step=0.01, format="%.2f")
     else:
-        continue  # ne jamais inclure les variables non numériques
+        user_input[feature] = st.number_input(f"{feature}", value=float(val))
 
-# Affichage de la prédiction
-if st.button("Prédire avec les nouvelles valeurs"):
+# === Choix de l'URL selon environnement
+IS_RENDER = os.getenv("RENDER", False)
+if IS_RENDER:
+    API_URL = "https://api-dashboard-credit-scoring.onrender.com/predict"
+else:
+    API_URL = "http://127.0.0.1:8000/predict"
+
+# === Appel API
+if st.button("🔍 Prédire avec ces valeurs"):
     try:
-        response = requests.post(
-            "https://credit-api-4q4r.onrender.com/predict",
-            json={"values": [user_input]}
-        )
-        if response.status_code == 200:
-            prediction = response.json().get("prediction")
-            probability = response.json().get("probability")
-            st.success(f"Prédiction : {'Approuvé' if prediction==0 else 'Refusé'} (Score : {probability:.2f})")
+        ordered_values = [user_input[feat] for feat in top_features]
+        payload = {"values": ordered_values}
+        response = requests.post(API_URL, json=payload)
 
-            # Affichage de la jauge
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=probability * 100,
-                title={'text': "Probabilité d'approbation"},
-                gauge={
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': "darkblue"},
-                    'steps': [
-                        {'range': [0, 50], 'color': "red"},
-                        {'range': [50, 100], 'color': "green"}
-                    ]
-                }
-            ))
-            st.plotly_chart(fig)
+        if response.status_code == 200:
+            result = response.json()
+            prediction = result.get("prediction")
+            proba = result.get("proba")
+
+            st.success(f"✅ Prédiction : {'Approuvé' if prediction == 0 else 'Refusé'}")
+            st.metric("Probabilité d'insolvabilité", f"{proba*100:.2f} %")
+
         else:
-            st.error("Erreur API : " + str(response.text))
+            st.error(f"Erreur API : {response.text}")
     except Exception as e:
-        st.error(f"Erreur de requête : {e}")
+        st.error(f"❌ Erreur de requête : {e}")
