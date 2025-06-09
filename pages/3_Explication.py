@@ -26,20 +26,24 @@ if len(shap_values) != len(top_features):
     st.error("🚫 Erreur : le nombre de SHAP values ne correspond pas aux top features.")
     st.stop()
 
-# === Titre ===
-st.title("🔍 Explication de la prédiction")
-st.write("Voici l’impact de chaque variable sur la décision prise pour ce client.")
-
-# === Traitement des SHAP ===
-df_shap = pd.DataFrame({
+# === Limitation du nombre de variables à 20 max pour affichage
+max_features_display = 20
+shap_df = pd.DataFrame({
     "Variable": top_features,
     "Valeur saisie": [user_input.get(k, "—") for k in top_features],
     "Impact SHAP": shap_values
 }).sort_values("Impact SHAP", key=abs, ascending=False)
 
+# Filtrage pour l'affichage
+df_display = shap_df.head(max_features_display)
+
+# === Titre ===
+st.title("🔍 Explication de la prédiction")
+st.write("Voici l’impact des principales variables sur la décision prise pour ce client.")
+
 # === Affichage du graphique interactif ===
 fig = px.bar(
-    df_shap.head(10),
+    df_display,
     x="Impact SHAP",
     y="Variable",
     orientation='h',
@@ -47,13 +51,13 @@ fig = px.bar(
     color_continuous_scale="RdYlGn",
     title="Top variables ayant influencé la décision"
 )
-
 st.plotly_chart(fig, use_container_width=True)
 
 # === Tableau explicatif ===
-with st.expander("📋 Détails des contributions"):
-    st.dataframe(df_shap.style.format({"Impact SHAP": "{:.4f}"}), use_container_width=True)
+with st.expander("📋 Détails des contributions (limité à 20 variables)"):
+    st.dataframe(df_display.style.format({"Impact SHAP": "{:.4f}"}), use_container_width=True)
 
 # === Message d'explication simplifié ===
 st.markdown("---")
 st.info("Un impact SHAP **positif** pousse vers une prédiction **non solvable**, un impact **négatif** vers **solvable**. Plus la barre est grande, plus l’influence est forte.")
+
