@@ -1,4 +1,4 @@
-﻿import os
+﻿﻿import os
 import pickle
 import json
 import numpy as np
@@ -35,8 +35,9 @@ def root():
 @app.post("/predict")
 def predict(input_data: InputData):
     try:
-        if len(input_data.values) != len(top_features):
-            raise HTTPException(status_code=400, detail="Mauvais nombre de variables")
+        # Suppression de la vérification stricte du nombre de variables
+        # if len(input_data.values) != len(top_features):
+        #     raise HTTPException(status_code=400, detail="Mauvais nombre de variables")
 
         # Création du dataframe
         row = baseline_row.copy()
