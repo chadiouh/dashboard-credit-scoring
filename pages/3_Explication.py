@@ -18,7 +18,7 @@ if "shap_values" not in result:
     st.stop()
 
 # shap_values est une liste de valeurs et top_features doit être dans les résultats
-shap_values = result["shap_values"]
+shap_values = list(result["shap_values"])
 top_features = result.get("top_features", [])
 
 # Vérification cohérence
