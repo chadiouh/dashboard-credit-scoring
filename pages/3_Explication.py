@@ -17,7 +17,14 @@ if "shap_values" not in result:
     st.error("🚫 Les valeurs SHAP n'ont pas été renvoyées par l'API. Veuillez les ajouter.")
     st.stop()
 
-shap_values = result["shap_values"]  # format : dict {feature: shap_value}
+# shap_values est une liste de valeurs et top_features doit être dans les résultats
+shap_values = result["shap_values"]
+top_features = result.get("top_features", [])
+
+# Vérification cohérence
+if len(shap_values) != len(top_features):
+    st.error("🚫 Erreur : le nombre de SHAP values ne correspond pas aux top features.")
+    st.stop()
 
 # === Titre ===
 st.title("🔍 Explication de la prédiction")
@@ -25,9 +32,9 @@ st.write("Voici l’impact de chaque variable sur la décision prise pour ce cli
 
 # === Traitement des SHAP ===
 df_shap = pd.DataFrame({
-    "Variable": list(shap_values.keys()),
-    "Valeur saisie": [user_input.get(k, "—") for k in shap_values.keys()],
-    "Impact SHAP": list(shap_values.values())
+    "Variable": top_features,
+    "Valeur saisie": [user_input.get(k, "—") for k in top_features],
+    "Impact SHAP": shap_values
 }).sort_values("Impact SHAP", key=abs, ascending=False)
 
 # === Affichage du graphique interactif ===

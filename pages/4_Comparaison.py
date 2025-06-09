@@ -16,7 +16,7 @@ user_input = st.session_state["user_input"]
 # === Chargement des top features ===
 file_dir = os.path.dirname(__file__)
 features_path = os.path.abspath(os.path.join(file_dir, "..", "models", "top_features.json"))
-data_path = os.path.abspath(os.path.join(file_dir, "..", "data", "application_train.csv"))
+data_path = os.path.abspath(os.path.join(file_dir, "..", "data", "application_sample.csv"))  # <-- correction ici
 
 with open(features_path, "r") as f:
     top_features = json.load(f)
@@ -53,5 +53,6 @@ fig.add_vline(
 
 st.plotly_chart(fig, use_container_width=True)
 st.info(f"Valeur du client pour **{feature}** : `{user_input.get(feature)}`")
+
 
 
