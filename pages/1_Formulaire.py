@@ -29,7 +29,7 @@ for feature in top_features:
 # === Choix de l'URL selon l'environnement
 IS_RENDER = os.getenv("RENDER", False)
 if IS_RENDER:
-    API_URL = "https://projet-7-credit-scoring-api.onrender.com/predict"
+    API_URL = "https://api-dashboard-credit-scoring.onrender.com/predict"
 else:
     API_URL = "http://127.0.0.1:8000/predict"
 
