@@ -7,10 +7,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 
-# Chemin absolu vers le répertoire courant
+# === Chemin vers les fichiers ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Chargement des fichiers
+# === Chargement des fichiers ===
 with open(os.path.join(BASE_DIR, "top_features.json"), "r") as f:
     top_features = json.load(f)
 
@@ -23,10 +23,10 @@ with open(os.path.join(BASE_DIR, "preprocessor.pkl"), "rb") as f:
 with open(os.path.join(BASE_DIR, "model_final.pkl"), "rb") as f:
     model = pickle.load(f)
 
-# Initialisation de l'API
+# === Initialisation de l'API ===
 app = FastAPI()
 
-# Modèle de données (uniquement les 15 variables importantes)
+# === Modèle d'entrée ===
 class InputData(BaseModel):
     values: List[float]
 
@@ -43,24 +43,25 @@ def predict(input_data: InputData):
                 detail=f"Attendu {len(top_features)} valeurs, reçu {len(input_data.values)}"
             )
 
-        # Copie de la ligne baseline et insertion des 15 valeurs
+        # Insertion des valeurs dans la baseline
         full_input = baseline_row.copy()
         for i, feature in enumerate(top_features):
             full_input[feature] = input_data.values[i]
 
-        # Transformation en DataFrame
+        # DataFrame + préprocessing
         X = pd.DataFrame([full_input])
-
-        # Application du préprocesseur
         X_processed = preprocessor.transform(X)
 
         # Prédiction
         proba = model.predict_proba(X_processed)[0, 1]
-        return {"prediction": float(proba)}
+        threshold = 0.5
+        prediction = int(proba > threshold)
+
+        return {
+            "prediction": prediction,
+            "proba": float(proba),
+            "threshold": threshold
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
