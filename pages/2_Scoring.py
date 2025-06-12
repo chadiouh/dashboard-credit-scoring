@@ -94,7 +94,7 @@ try:
         preprocessor = pickle.load(f)
 
     # Chargement de X_train simplifié depuis un CSV local
-    X_path = os.path.abspath(os.path.join(file_dir, "..", "data", "X_train.csv"))
+    X_path = os.path.abspath(os.path.join(file_dir, "..", "data", "application_sample.csv"))
     X_train = pd.read_csv(X_path)
 
     # Transformation
