@@ -80,7 +80,7 @@ st.info("Le score représente la probabilité que le client **ne rembourse pas**
 st.subheader("📊 Importance globale des variables (SHAP)")
 
 global_shap_path = os.path.abspath(os.path.join(file_dir, "..", "models", "global_shap_importances.json"))
-with open(global_shap_path, "r", encoding="utf-8") as f:
+with open(global_shap_path, "r", encoding="utf-8-sig") as f:
     global_shap = json.load(f)
 
 # Tri des top variables
