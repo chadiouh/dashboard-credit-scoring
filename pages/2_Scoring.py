@@ -148,5 +148,34 @@ try:
 
     st.caption("Graphique basé sur un profil type, recalculé dynamiquement avec SHAP sur les 15 variables utilisées dans l’interface.")
 
-except Exception as e:
+except Exception as e: 
     st.error(f"❌ Erreur lors du calcul du SHAP global : {e}")
+
+    # ──────────────────── SHAP global réel basé sur tout le jeu application_train ────────────────────
+st.markdown("---")
+st.subheader("📊 Importance SHAP globale sur tout le jeu de données")
+
+try:
+    # Chargement du fichier JSON pré-calculé
+    global_shap_path = os.path.abspath(os.path.join(file_dir, "..", "models", "global_shap_importances.json"))
+    with open(global_shap_path, "r") as f:
+        shap_dict = json.load(f)
+
+    df_global = pd.DataFrame(list(shap_dict.items()), columns=["Variable", "Importance SHAP moyenne"])
+    df_global = df_global.sort_values("Importance SHAP moyenne", ascending=True)
+
+    fig = px.bar(
+        df_global,
+        x="Importance SHAP moyenne",
+        y="Variable",
+        orientation="h",
+        color="Importance SHAP moyenne",
+        color_continuous_scale="Bluered_r",
+        title="Importance globale des variables sur le dataset complet"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.caption("Calcul effectué sur toutes les lignes de `application_train.csv`, puis stocké dans `global_shap_importances.json`.")
+
+except Exception as e:
+    st.error(f"❌ Erreur lors du chargement du SHAP global complet : {e}")

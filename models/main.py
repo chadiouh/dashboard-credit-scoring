@@ -48,7 +48,7 @@ def predict(input_data: InputData):
 
         # Prédiction
         proba = model.predict_proba(X_processed)[0, 1]
-        prediction = int(proba >= 0.5)
+        prediction = int(proba >= 0.05)
 
         # Explication SHAP (TreeExplainer)
         explainer = shap.TreeExplainer(model)
@@ -66,7 +66,7 @@ def predict(input_data: InputData):
         return {
             "prediction": prediction,
             "proba": proba,
-            "threshold": 0.5,
+            "threshold": 0.05,
             "shap_values": shap_vals,
             "expected_value": expected_val
         }
