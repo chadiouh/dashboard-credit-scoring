@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 import shap
 import pickle
 import json
@@ -34,4 +34,5 @@ shap_global_dict = dict(zip(top_features, mean_abs_shap.tolist()))
 # Sauvegarde
 with open("global_shap_importances.json", "w") as f:
     json.dump(shap_global_dict, f, indent=2)
+
 
