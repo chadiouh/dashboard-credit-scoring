@@ -1,38 +1,19 @@
-﻿import pandas as pd
-import shap
-import pickle
+﻿import shap
+import pandas as pd
 import json
-import os
 
-# Chargement du modèle et du préprocesseur
-with open("model_final.pkl", "rb") as f:
-    model = pickle.load(f)
-
-with open("preprocessor.pkl", "rb") as f:
-    preprocessor = pickle.load(f)
-
-with open("top_features.json", "r") as f:
-    top_features = json.load(f)
-
-# Chargement d’un sous-échantillon de clients
-df = pd.read_csv("X_clean_sample.csv")  # ← adapte ici le nom du fichier si différent
-X_sample = df[top_features]
-X_processed = preprocessor.transform(X_sample)
-
-# SHAP values
+# modèle et X_train doivent être déjà chargés
 explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(X_processed)
+shap_values = explainer.shap_values(X_train)
+
+# Si shap_values est une liste (cas LightGBM), prendre la classe 1
 if isinstance(shap_values, list) and len(shap_values) == 2:
-    shap_vals = shap_values[1]
-else:
-    shap_vals = shap_values
+    shap_values = shap_values[1]
 
-# Moyenne absolue des SHAP
-mean_abs_shap = abs(shap_vals).mean(axis=0)
-shap_global_dict = dict(zip(top_features, mean_abs_shap.tolist()))
+# Calcul de la moyenne absolue
+mean_shap = abs(shap_values).mean(axis=0)
+shap_importance = dict(zip(X_train.columns, mean_shap))
 
-# Sauvegarde
-with open("global_shap_importances.json", "w") as f:
-    json.dump(shap_global_dict, f, indent=2)
-
-
+# Export
+with open("models/global_shap_importances.json", "w") as f:
+    json.dump(shap_importance, f)
