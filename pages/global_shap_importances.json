@@ -1,0 +1,36 @@
+﻿import pandas as pd
+import shap
+import pickle
+import json
+import os
+
+# Chargement du modèle et du préprocesseur
+with open("model_final.pkl", "rb") as f:
+    model = pickle.load(f)
+
+with open("preprocessor.pkl", "rb") as f:
+    preprocessor = pickle.load(f)
+
+with open("top_features.json", "r") as f:
+    top_features = json.load(f)
+
+# Chargement d’un sous-échantillon de clients
+df = pd.read_csv("X_clean_sample.csv")  # ← adapte ici le nom du fichier si différent
+X_sample = df[top_features]
+X_processed = preprocessor.transform(X_sample)
+
+# SHAP values
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_processed)
+if isinstance(shap_values, list) and len(shap_values) == 2:
+    shap_vals = shap_values[1]
+else:
+    shap_vals = shap_values
+
+# Moyenne absolue des SHAP
+mean_abs_shap = abs(shap_vals).mean(axis=0)
+shap_global_dict = dict(zip(top_features, mean_abs_shap.tolist()))
+
+# Sauvegarde
+with open("global_shap_importances.json", "w") as f:
+    json.dump(shap_global_dict, f, indent=2)

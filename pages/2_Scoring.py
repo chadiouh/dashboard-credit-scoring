@@ -76,21 +76,21 @@ st.markdown("---")
 st.info("Le score représente la probabilité que le client **ne rembourse pas** son crédit. "
         "Une valeur supérieure au seuil entraîne un refus automatique.")
 
-# ──────────────────── Tableau et graphique SHAP ────────────────────
-st.subheader("🧠 Contribution des variables à cette décision (SHAP)")
+# ──────────────────── SHAP global : top features en moyenne ────────────────────
+st.subheader("📊 Importance globale des variables (SHAP)")
 
-df_shap = (
-    pd.DataFrame({
-        "Variable":         top_features,
-        "Valeur client":    input_values,
-        "Contribution SHAP": shap_values
-    })
-    .sort_values("Contribution SHAP", key=abs, ascending=False)
+global_shap_path = os.path.abspath(os.path.join(file_dir, "..", "models", "global_shap_importances.json"))
+with open(global_shap_path, "r") as f:
+    global_shap = json.load(f)
+
+# Tri des top variables
+df_global = (
+    pd.DataFrame(global_shap.items(), columns=["Variable", "Importance moyenne SHAP"])
+    .sort_values("Importance moyenne SHAP", ascending=False)
+    .head(15)
 )
 
-st.dataframe(df_shap.style.format({"Valeur client": "{:.2f}", "Contribution SHAP": "{:.4f}"}))
+st.bar_chart(df_global.set_index("Variable"))
 
-st.bar_chart(df_shap.set_index("Variable")["Contribution SHAP"])
-
-st.caption("Les valeurs SHAP indiquent l’impact de chaque variable sur la prédiction : "
-           "négatif → tendance à l’acceptation, positif → tendance au refus.")
+st.caption("Les valeurs indiquent l’impact **moyen** de chaque variable sur les prédictions du modèle. "
+           "Plus la valeur est élevée, plus la variable influence les décisions.")
