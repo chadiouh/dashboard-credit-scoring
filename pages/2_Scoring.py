@@ -76,21 +76,63 @@ st.markdown("---")
 st.info("Le score représente la probabilité que le client **ne rembourse pas** son crédit. "
         "Une valeur supérieure au seuil entraîne un refus automatique.")
 
-# ──────────────────── SHAP global : top features en moyenne ────────────────────
+# ──────────────────── SHAP global dynamique ────────────────────
 st.subheader("📊 Importance globale des variables (SHAP)")
 
-global_shap_path = os.path.abspath(os.path.join(file_dir, "..", "models", "global_shap_importances.json"))
-with open(global_shap_path, "r", encoding="utf-8-sig") as f:
-    global_shap = json.load(f)
+try:
+    import shap
+    import pickle
+    import numpy as np
 
-# Tri des top variables
-df_global = (
-    pd.DataFrame(global_shap.items(), columns=["Variable", "Importance moyenne SHAP"])
-    .sort_values("Importance moyenne SHAP", ascending=False)
-    .head(15)
-)
+    # Chargement du modèle et du préprocesseur
+    model_path = os.path.abspath(os.path.join(file_dir, "..", "models", "model_final.pkl"))
+    preproc_path = os.path.abspath(os.path.join(file_dir, "..", "models", "preprocessor.pkl"))
 
-st.bar_chart(df_global.set_index("Variable"))
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    with open(preproc_path, "rb") as f:
+        preprocessor = pickle.load(f)
 
-st.caption("Les valeurs indiquent l’impact **moyen** de chaque variable sur les prédictions du modèle. "
-           "Plus la valeur est élevée, plus la variable influence les décisions.")
+    # Chargement de X_train simplifié depuis un CSV local
+    X_path = os.path.abspath(os.path.join(file_dir, "..", "data", "X_train.csv"))
+    X_train = pd.read_csv(X_path)
+
+    # Transformation
+    X_proc = preprocessor.transform(X_train)
+    if hasattr(X_proc, "toarray"):
+        X_proc = X_proc.toarray()
+
+    # SHAP
+    explainer = shap.TreeExplainer(model)
+    shap_vals = explainer.shap_values(X_proc)
+    if isinstance(shap_vals, list) and len(shap_vals) == 2:
+        shap_vals = shap_vals[1]
+
+    mean_shap = np.abs(shap_vals).mean(axis=0)
+
+    # Récupération des noms de variables
+    with open(os.path.join(file_dir, "..", "models", "top_features.json")) as f:
+        top_features = json.load(f)
+
+    shap_dict = dict(zip(top_features, mean_shap[:len(top_features)]))
+
+    df_global = pd.DataFrame(list(shap_dict.items()), columns=["Variable", "Importance moyenne SHAP"])
+    df_global = df_global.sort_values("Importance moyenne SHAP", ascending=False).head(15)
+
+    # Affichage graphique
+    import plotly.express as px
+    fig = px.bar(
+        df_global,
+        x="Importance moyenne SHAP",
+        y="Variable",
+        orientation="h",
+        color="Importance moyenne SHAP",
+        color_continuous_scale="Bluered_r",
+        title="Top variables - Importance moyenne SHAP"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.caption("Graphique généré dynamiquement à partir du modèle et des données d'entraînement.")
+
+except Exception as e:
+    st.error(f"❌ Erreur lors du calcul du SHAP global : {e}")
