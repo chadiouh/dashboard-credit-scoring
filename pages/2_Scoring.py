@@ -76,63 +76,62 @@ st.markdown("---")
 st.info("Le score représente la probabilité que le client **ne rembourse pas** son crédit. "
         "Une valeur supérieure au seuil entraîne un refus automatique.")
 
-# ──────────────────── SHAP global dynamique ────────────────────
+# ──────────────────── SHAP global dynamique limité aux top features ────────────────────
 st.subheader("📊 Importance globale des variables (SHAP)")
 
 try:
     import shap
     import pickle
     import numpy as np
+    import plotly.express as px
 
-    # Chargement du modèle et du préprocesseur
-    model_path = os.path.abspath(os.path.join(file_dir, "..", "models", "model_final.pkl"))
-    preproc_path = os.path.abspath(os.path.join(file_dir, "..", "models", "preprocessor.pkl"))
+    # === Chargement des composants ===
+    model_path = os.path.join(file_dir, "..", "models", "model_final.pkl")
+    preproc_path = os.path.join(file_dir, "..", "models", "preprocessor.pkl")
+    top_feat_path = os.path.join(file_dir, "..", "models", "top_features.json")
+    data_path = os.path.join(file_dir, "..", "data", "application_sample.csv")
 
     with open(model_path, "rb") as f:
         model = pickle.load(f)
     with open(preproc_path, "rb") as f:
         preprocessor = pickle.load(f)
+    with open(top_feat_path, "r") as f:
+        top_features = json.load(f)
 
-    # Chargement de X_train simplifié depuis un CSV local
-    X_path = os.path.abspath(os.path.join(file_dir, "..", "data", "application_sample.csv"))
-    X_train = pd.read_csv(X_path)
+    # === Chargement des données (avec les colonnes top features uniquement)
+    df = pd.read_csv(data_path)
+    df = df[top_features]
 
-    # Transformation
-    X_proc = preprocessor.transform(X_train)
+    # === Préparation
+    X_proc = preprocessor.transform(df)
     if hasattr(X_proc, "toarray"):
         X_proc = X_proc.toarray()
 
-    # SHAP
+    # === Calcul SHAP
     explainer = shap.TreeExplainer(model)
     shap_vals = explainer.shap_values(X_proc)
     if isinstance(shap_vals, list) and len(shap_vals) == 2:
         shap_vals = shap_vals[1]
 
-    mean_shap = np.abs(shap_vals).mean(axis=0)
+    # === Moyenne absolue SHAP uniquement sur les 15 premières colonnes
+    mean_shap = np.abs(shap_vals).mean(axis=0)[:len(top_features)]
+    shap_df = pd.DataFrame({
+        "Variable": top_features,
+        "Importance SHAP moyenne": mean_shap
+    }).sort_values("Importance SHAP moyenne", ascending=True)
 
-    # Récupération des noms de variables
-    with open(os.path.join(file_dir, "..", "models", "top_features.json")) as f:
-        top_features = json.load(f)
-
-    shap_dict = dict(zip(top_features, mean_shap[:len(top_features)]))
-
-    df_global = pd.DataFrame(list(shap_dict.items()), columns=["Variable", "Importance moyenne SHAP"])
-    df_global = df_global.sort_values("Importance moyenne SHAP", ascending=False).head(15)
-
-    # Affichage graphique
-    import plotly.express as px
+    # === Affichage
     fig = px.bar(
-        df_global,
-        x="Importance moyenne SHAP",
+        shap_df,
+        x="Importance SHAP moyenne",
         y="Variable",
         orientation="h",
-        color="Importance moyenne SHAP",
+        color="Importance SHAP moyenne",
         color_continuous_scale="Bluered_r",
-        title="Top variables - Importance moyenne SHAP"
+        title="Variables les plus influentes (SHAP global)"
     )
     st.plotly_chart(fig, use_container_width=True)
-
-    st.caption("Graphique généré dynamiquement à partir du modèle et des données d'entraînement.")
+    st.caption("Ce graphique montre l’importance **moyenne absolue** des 15 variables utilisées dans le dashboard.")
 
 except Exception as e:
     st.error(f"❌ Erreur lors du calcul du SHAP global : {e}")
