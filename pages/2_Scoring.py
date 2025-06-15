@@ -16,7 +16,7 @@ user_input  = st.session_state["user_input"]
 
 # ──────────────────── Variables principales ────────────────────
 proba        = result["proba"]
-threshold    = result["threshold"]
+threshold = result.get("threshold", 0.5)
 prediction   = result["prediction"]
 shap_values  = result["shap_values"]
 expected_val = result["expected_value"]

@@ -40,7 +40,7 @@ shap_df = pd.DataFrame({
 }).sort_values("Impact SHAP", key=abs, ascending=False)
 
 # === Limitation de l'affichage à 20 variables
-df_display = shap_df.head(20)
+df_display = shap_df.head(15)
 
 # === Affichage
 st.title("🔍 Explication de la prédiction")
@@ -53,11 +53,13 @@ fig = px.bar(
     orientation='h',
     color="Impact SHAP",
     color_continuous_scale="RdYlGn",
-    title="Top variables ayant influencé la décision"
+    title="Top 15 variables ayant influencé la décision",
+    labels={"Impact SHAP": "Impact SHAP", "Variable": "Variable"}
 )
+fig.update_layout(yaxis=dict(autorange="reversed"))  # plus haut en haut
 st.plotly_chart(fig, use_container_width=True)
 
-with st.expander("📋 Détails des contributions (limité à 20 variables)"):
+with st.expander("📋 Détails des contributions (limité à 15 variables)"):
     st.dataframe(df_display.style.format({"Impact SHAP": "{:.4f}"}), use_container_width=True)
 
 st.markdown("---")
