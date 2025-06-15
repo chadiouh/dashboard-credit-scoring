@@ -77,76 +77,30 @@ st.info("Le score représente la probabilité que le client **ne rembourse pas**
         "Une valeur supérieure au seuil entraîne un refus automatique.")
 
 # ──────────────────── SHAP global  ────────────────────
+# ──────────────────── SHAP global dynamique ────────────────────
 st.subheader("📊 Importance globale des variables (SHAP)")
 
 try:
-    import shap
-    import pickle
-    import numpy as np
-    import plotly.express as px
+    import importlib
+    import matplotlib.pyplot as plt
+    import sys, os
 
-    # === Chemins
-    model_path = os.path.join(file_dir, "..", "models", "model_final.pkl")
-    preproc_path = os.path.join(file_dir, "..", "models", "preprocessor.pkl")
-    baseline_path = os.path.join(file_dir, "..", "models", "baseline_row.json")
-    top_feat_path = os.path.join(file_dir, "..", "models", "top_features.json")
+    # Pour pouvoir importer le script situé dans /models
+    models_dir = os.path.abspath(os.path.join(file_dir, "..", "models"))
+    if models_dir not in sys.path:
+        sys.path.append(models_dir)
 
-    # === Chargement
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
-    with open(preproc_path, "rb") as f:
-        preprocessor = pickle.load(f)
-    with open(baseline_path, "r") as f:
-        baseline_row = json.load(f)
-    with open(top_feat_path, "r") as f:
-        top_features = json.load(f)
+    shap_plot = importlib.import_module("shap_plot")  # exécute le script
+    df_shap = getattr(shap_plot, "shap_df", None) or shap_plot.get_shap_df()
 
-    # === Création d’un DataFrame fictif cohérent
-    X_full = pd.DataFrame([baseline_row] * 100)
+    # Barplot matplotlib
+    fig, ax = plt.subplots(figsize=(10, 8))
+    ax.barh(df_shap["feature"][::-1], df_shap["importance"][::-1])
+    ax.set_xlabel("Importance moyenne (|SHAP|)")
+    ax.set_title("Top variables influentes (SHAP)")
+    ax.grid(True, axis="x", linestyle="--", alpha=0.4)
 
-    # === Transformation
-    X_proc = preprocessor.transform(X_full)
-    if hasattr(X_proc, "toarray"):
-        X_proc = X_proc.toarray()
+    st.pyplot(fig, use_container_width=True)
 
-    # === SHAP
-    explainer = shap.TreeExplainer(model)
-    shap_vals = explainer.shap_values(X_proc)
-    if isinstance(shap_vals, list) and len(shap_vals) == 2:
-        shap_vals = shap_vals[1]
-
-    # === Moyenne sur l’ensemble
-    mean_shap = np.abs(shap_vals).mean(axis=0)
-
-    # === Récupération des noms après transformation
-    try:
-        feature_names = preprocessor.get_feature_names_out()
-    except:
-        feature_names = [f"Var_{i}" for i in range(X_proc.shape[1])]
-
-    # === Création du dataframe SHAP global
-    df_all = pd.DataFrame({
-        "Variable": feature_names,
-        "Importance SHAP moyenne": mean_shap
-    })
-
-    # === Filtrage pour ne garder que les top features
-    df_top = df_all[df_all["Variable"].isin(top_features)].copy()
-    df_top = df_top.sort_values("Importance SHAP moyenne", ascending=True)
-
-    # === Affichage
-    fig = px.bar(
-        df_top,
-        x="Importance SHAP moyenne",
-        y="Variable",
-        orientation="h",
-        color="Importance SHAP moyenne",
-        color_continuous_scale="Bluered_r",
-        title="Top 15 variables utilisées dans le dashboard"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.caption("Graphique basé sur un profil type, recalculé dynamiquement avec SHAP sur les 15 variables utilisées dans l’interface.")
-
-except Exception as e: 
-    st.error(f"❌ Erreur lors du calcul du SHAP global : {e}")
+except Exception as e:
+    st.error(f"❌ Impossible d’afficher le graphique SHAP dynamique : {e}")
