@@ -1,63 +1,60 @@
-﻿# pages/2_Scoring.py
-import os
+﻿import os
 import sys
 import json
-import importlib
-
+import matplotlib.pyplot as plt
 import streamlit as st
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 import pandas as pd
+import pickle
 
 st.set_page_config(page_title="Résultat du scoring", layout="centered")
 
-# ──────────────────── Sécurité d’accès ────────────────────
+# ──────────────────── Vérification session ────────────────────
 if "result" not in st.session_state or "user_input" not in st.session_state:
     st.warning("⚠️ Veuillez d'abord remplir le formulaire.")
     st.stop()
 
 result      = st.session_state["result"]
 user_input  = st.session_state["user_input"]
+proba       = result.get("proba", 0.0)
+threshold   = result.get("threshold", 0.5)
+prediction  = result.get("prediction", 0)
+expected_val = result.get("expected_value")
+shap_values = result.get("shap_values", [])
 
-# ──────────────────── Variables principales ────────────────────
-proba        = result.get("proba", 0.0)
-threshold    = result.get("threshold", 0.5)          # valeur par défaut si non renvoyée
-prediction   = result.get("prediction", 0)
-shap_values  = result.get("shap_values", [])
-expected_val = result.get("expected_value", None)    # peut être None sans gêner la suite
+# ──────────────────── Chemins utiles ────────────────────
+file_dir     = os.path.dirname(__file__)
+models_dir   = os.path.abspath(os.path.join(file_dir, "..", "models"))
+features_fp  = os.path.join(models_dir, "top_features.json")
+shap_df_fp   = os.path.join(models_dir, "shap_summary_validation.pkl")
 
-# ──────────────────── Récupération de la liste de features ────────────────────
-file_dir      = os.path.dirname(__file__)
-features_path = os.path.abspath(os.path.join(file_dir, "..", "models", "top_features.json"))
-with open(features_path, "r") as f:
-    top_features = json.load(f)          # liste de 15 variables
+with open(features_fp, "r") as f:
+    top_features = json.load(f)
 
-# Harmonisation éventuelle de la longueur des SHAP
+# Harmonisation SHAP values
 if isinstance(shap_values, list):
     if len(shap_values) == 1 and isinstance(shap_values[0], list):
         shap_values = shap_values[0]
-    if len(shap_values) != len(top_features):
-        # on tronque ou remplit pour éviter les crash
-        shap_values = (shap_values + [0.0]*len(top_features))[:len(top_features)]
+    shap_values = (shap_values + [0.0]*len(top_features))[:len(top_features)]
 else:
     shap_values = [float(shap_values)] * len(top_features)
 
-# ──────────────────── JAUGE + DÉCISION ────────────────────
+# ──────────────────── JAUGE ────────────────────
 st.title("📈 Résultat de la prédiction")
 
-decision_txt  = "✅ Crédit accordé (Solvable)" if prediction == 0 else "❌ Crédit refusé (Non solvable)"
-decision_col  = "green" if prediction == 0 else "red"
+decision_txt = "✅ Crédit accordé (Solvable)" if prediction == 0 else "❌ Crédit refusé (Non solvable)"
+decision_col = "green" if prediction == 0 else "red"
 st.markdown(f"### {decision_txt}")
 st.metric("Probabilité d'insolvabilité", f"{proba*100:.2f} %", delta=f"Seuil : {threshold*100:.2f} %")
 
 gauge = go.Figure(
     go.Indicator(
-        mode  = "gauge+number+delta",
+        mode = "gauge+number+delta",
         value = proba,
         delta = {"reference": threshold},
         gauge = {
             "axis": {"range": [0, 1]},
-            "bar":  {"color": decision_col},
+            "bar": {"color": decision_col},
             "steps": [
                 {"range": [0, threshold], "color": "lightgreen"},
                 {"range": [threshold, 1], "color": "lightcoral"},
@@ -74,23 +71,16 @@ st.markdown("---")
 st.info("Le score représente la probabilité que le client **ne rembourse pas** son crédit. "
         "Une valeur supérieure au seuil entraîne un refus automatique.")
 
-# ──────────────────── SHAP GLOBAL (15 variables) ────────────────────
+# ──────────────────── SHAP GLOBAL – matplotlib depuis pickle ────────────────────
 st.subheader("📊 Importance globale des variables (SHAP)")
 
 try:
-    # import dynamique du script de calcul (models/shap_plot.py)
-    models_dir = os.path.abspath(os.path.join(file_dir, "..", "models"))
-    if models_dir not in sys.path:
-        sys.path.append(models_dir)
+    with open(shap_df_fp, "rb") as f:
+        df_global = pickle.load(f)
 
-    shap_plot = importlib.import_module("shap_plot")            # exécute le code une 1ʳᵉ fois
-    df_global = getattr(shap_plot, "shap_df", None) or shap_plot.get_shap_df()
+    # s’assurer que seules les top features sont affichées et dans le bon ordre
+    df_global = df_global.set_index("feature").reindex(top_features).fillna(0).reset_index()
 
-    # on garde exactement les 15 features du dashboard, dans l’ordre défini
-    df_global = df_global.set_index("feature").reindex(top_features).reset_index()
-    df_global["importance"].fillna(0.0, inplace=True)
-
-    # tracé matplotlib (15 barres ≡ 15 features)
     fig, ax = plt.subplots(figsize=(9, 7))
     ax.barh(df_global["feature"][::-1], df_global["importance"][::-1])
     ax.set_xlabel("Importance moyenne (|SHAP|)")
@@ -98,9 +88,11 @@ try:
     ax.grid(axis="x", linestyle="--", alpha=0.3)
     st.pyplot(fig, use_container_width=True)
 
+except FileNotFoundError:
+    st.error("❌ Le fichier 'shap_summary_validation.pkl' est introuvable dans models/")
 except Exception as e:
-    st.error(f"❌ Impossible d’afficher le graphique global : {e}")
+    st.error(f"❌ Erreur lors du chargement du SHAP global : {e}")
 
-# On peut ajouter un petit rappel de la valeur de base si on l’a :
+# ──────────────────── (Optionnel) expected value ────────────────────
 if expected_val is not None:
-    st.caption(f"Valeur SHAP de base (expected value) : **{expected_val:.4f}**")
+    st.caption(f"Valeur de base du modèle (expected value) : **{expected_val:.4f}**")
